@@ -6,31 +6,14 @@
 <script src="src/gps-ar.js"></script>
 
 <body style='margin: 0px; overflow: hidden;'>
-	
-	<!-- TODO build that directly in the javascript -->
-	<div style="position: fixed; top: 10px; width:100%; text-align: center; z-index: 1; text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;">
-		<div>
-			coords: <span id="crd_longitude"></span>, <span id="crd_latitude"></span>
-			(origin coords: <span id="zero_crd_longitude"></span>, <span id="zero_crd_latitude"></span>)
-		</div>
-		<div>
-			camera coords: <span id="camera_p_x"></span>, <span id="camera_p_z"></span>
-		</div>
-		<div>
-			compass heading: <span id="compass_heading"></span>,
-			camera angle: <span id="camera_angle"></span>,
-			yaw angle: <span id="yaw_angle"></span>
-		</div>
-	</div>
-	
-	<a-scene embedded artoolkit='sourceType: webcam;'><!--  -->
-		
-		<a-camera id="camera" user-height="1.6" gps-position compass-rotation gps-debug><!--  --></a-camera>
-		
+	<a-scene embedded arjs='sourceType: webcam;'>
 		<!-- <a-sphere gps-place="longitude: 37.470155; latitude: 55.153565"></a-sphere>
 		<a-sphere gps-place="longitude: 37.469820; latitude: 55.153653"></a-sphere> -->
-		<a-sphere gps-place="longitude: -6.238680400000021; latitude: 53.3426624" radius=2 color=red></a-sphere>
 		<!-- <a-sphere gps-place="longitude:-6.2343797; latitude: 53.3431803" radius=2 color=red></a-sphere> -->
+
+		<a-sphere gps-place="latitude: 53.3426624; longitude: -6.238680400000021;"  radius=2 color=red></a-sphere>
+		<a-sphere gps-place="latitude: 51.509192; longitude: -0.114623;"  radius=2 color=green></a-sphere>
 		
+		<a-camera id="camera" user-height="1.6" gps-position compass-rotation gps-debug></a-camera>
 	</a-scene>
 </body>

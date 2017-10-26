@@ -5,19 +5,20 @@
 AFRAME.registerComponent('gps-position', {
 	
 	_watchPositionId: null,
-	zeroCrd: null,
-	crd: null,
+
+	originCoords: null,
+	currentCoords: null,
 	
 	schema: {
 		accuracy: {
 			type: 'int',
 			default: 100
 		},
-		'zero-crd-latitude': {
+		'origin-coords-latitude': {
 			type: 'number',
 			default: NaN
 		},
-		'zero-crd-longitude': {
+		'origin-coords-longitude': {
 			type: 'number',
 			default: NaN
 		}
@@ -25,12 +26,13 @@ AFRAME.registerComponent('gps-position', {
 	
 	init: function () {
 		
-		if(!isNaN(this.data['zero-crd-latitude']) && !isNaN(this.data['zero-crd-longitude'])){
-			this.zeroCrd = {latitude: this.data['zero-crd-latitude'], longitude: this.data['zero-crd-longitude']}
+		if( !isNaN(this.data['origin-coords-latitude']) && !isNaN(this.data['origin-coords-longitude']) ){
+			this.originCoords = {latitude: this.data['origin-coords-latitude'], longitude: this.data['origin-coords-longitude']}
 		}
 		
 		this._watchPositionId = this.watchGPS(function(position){
-			this.crd = position.coords
+			// https://developer.mozilla.org/en-US/docs/Web/API/Coordinates
+			this.currentCoords = position.coords
 			this.updatePosition()
 		}.bind(this))
 		
@@ -48,6 +50,7 @@ AFRAME.registerComponent('gps-position', {
 			return
 		}
 		
+		// https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition
 		return navigator.geolocation.watchPosition(success, error, {
 			enableHighAccuracy: true,
 			maximumAge: 0,
@@ -56,42 +59,37 @@ AFRAME.registerComponent('gps-position', {
 	},
 	
 	updatePosition: function () {
+		// dont update if accuracy isnt good enough
+		if( this.currentCoords.accuracy > this.data.accuracy )	return
 		
-		if( this.crd.accuracy > this.data.accuracy )	return
-		
-		if( this.zeroCrd === null ) this.zeroCrd = this.crd
+		// init originCoords if needed
+		if( this.originCoords === null ) this.originCoords = this.currentCoords
 		
 		var position = this.el.getAttribute('position')
 		
 		// compute position.x
-		position.x = this.calcMeters(
-			this.zeroCrd,
-			{
-				longitude: this.crd.longitude,
-				latitude: this.zeroCrd.latitude
-			}
-		) * (
-			this.crd.longitude > this.zeroCrd.longitude
-				? 1 : -1
-		)
+		var dstCoords = {
+			longitude: this.currentCoords.longitude,
+			latitude: this.originCoords.latitude
+		}
+		position.x = this.computeDistanceMeters(this.originCoords, dstCoords)
+		position.x *= this.currentCoords.longitude > this.originCoords.longitude ? 1 : -1
 		
 		// compute position.z
-		position.z = this.calcMeters(
-			this.zeroCrd,
-			{
-				longitude: this.zeroCrd.longitude,
-				latitude: this.crd.latitude
-			}
-		) * (
-			this.crd.latitude > this.zeroCrd.latitude
-				? -1 : 1
-		)
+		var dstCoords = {
+			longitude: this.originCoords.longitude,
+			latitude: this.currentCoords.latitude
+		}
+		position.z = this.computeDistanceMeters(this.originCoords, dstCoords)
+		position.z *= this.currentCoords.latitude > this.originCoords.latitude ? -1 : 1
 		
 		// update element position
 		this.el.setAttribute('position', position)
 	},
 	
-	calcMeters: function(src, dest) {
+	computeDistanceMeters: function(src, dest) {
+		// 'Calculate distance, bearing and more between Latitude/Longitude points'
+		// https://www.movable-type.co.uk/scripts/latlong.html
 		var dlon = THREE.Math.degToRad(dest.longitude - src.longitude)
 		var dlat = THREE.Math.degToRad(dest.latitude - src.latitude)
 		
@@ -133,13 +131,13 @@ AFRAME.registerComponent('compass-rotation', {
 	
 	init: function () {
 		
-		if(typeof(this.el.components['look-controls']) == 'undefined') return
+		if( this.el.components['look-controls'] === undefined ) return
 		
 		this.lookControls = this.el.components['look-controls']
 		
 		this.handlerOrientation = this.handlerOrientation.bind(this)
 		
-		if(this.data.orientationEvent === 'auto'){
+		if( this.data.orientationEvent === 'auto' ){
 			if('ondeviceorientationabsolute' in window){
 				this.data.orientationEvent = 'deviceorientationabsolute'
 			}else if('ondeviceorientation' in window){
@@ -160,7 +158,7 @@ AFRAME.registerComponent('compass-rotation', {
 		
 	},
 	
-	tick: function (time, timeDelta) {
+	tick: function( time, timeDelta ){
 		
 		if(this.heading === null || this.lastTimestamp > (time - this.data.fixTime)) return
 		
@@ -274,7 +272,7 @@ AFRAME.registerComponent('compass-rotation', {
 AFRAME.registerComponent('gps-place', {
 	
 	cameraGpsPosition: null,
-	deferredInitInterval: 0,
+	_deferredInitInterval: 0,
 	
 	schema: {
 		latitude: {
@@ -285,18 +283,18 @@ AFRAME.registerComponent('gps-place', {
 			type: 'number',
 			default: 0
 		},
-		cameraSelector: {
+		cameraSelector: {	// TODO do i need this ?
 			type: 'string',
 			default: 'a-camera, [camera]'
 		}
 	},
 	
 	init: function () {
-		if(this.deferredInit()) return
-		this.deferredInitInterval = setInterval(this.deferredInit.bind(this), 1000)
+		if(this._deferredInit()) return
+		this._deferredInitInterval = setInterval(this._deferredInit.bind(this), 100)
 	},
 	
-	deferredInit: function () {
+	_deferredInit: function () {
 		
 		if(!this.cameraGpsPosition){
 			var camera = document.querySelector(this.data.cameraSelector)
@@ -304,12 +302,12 @@ AFRAME.registerComponent('gps-place', {
 			this.cameraGpsPosition = camera.components['gps-position']
 		}
 		
-		if(!this.cameraGpsPosition.zeroCrd) return
+		if(!this.cameraGpsPosition.originCoords) return
 		
 		this.updatePosition()
 		
-		clearInterval(this.deferredInitInterval)
-		this.deferredInitInterval = 0
+		clearInterval(this._deferredInitInterval)
+		this._deferredInitInterval = 0
 		
 		return true
 	},
@@ -319,28 +317,20 @@ AFRAME.registerComponent('gps-place', {
 		var position = {x: 0, y: 0, z: 0}
 		
 		// update position.x
-		position.x = this.cameraGpsPosition.calcMeters(
-			this.cameraGpsPosition.zeroCrd,
-			{
-				longitude: this.data.longitude,
-				latitude: this.cameraGpsPosition.zeroCrd.latitude
-			}
-		) * (
-			this.data.longitude > this.cameraGpsPosition.zeroCrd.longitude
-				? 1 : -1
-		)
+		var dstCoords = {
+			longitude: this.data.longitude,
+			latitude: this.cameraGpsPosition.originCoords.latitude
+		}
+		position.x = this.cameraGpsPosition.computeDistanceMeters( this.cameraGpsPosition.originCoords, dstCoords )
+		position.x *= this.data.longitude > this.cameraGpsPosition.originCoords.longitude ? 1 : -1
 		
 		// update position.z
-		position.z = this.cameraGpsPosition.calcMeters(
-			this.cameraGpsPosition.zeroCrd,
-			{
-				longitude: this.cameraGpsPosition.zeroCrd.longitude,
-				latitude: this.data.latitude
-			}
-		) * (
-			this.data.latitude > this.cameraGpsPosition.zeroCrd.latitude
-				? -1 : 1
-		)
+		var dstCoords = {
+			longitude: this.cameraGpsPosition.originCoords.longitude,
+			latitude: this.data.latitude
+		}
+		position.z = this.cameraGpsPosition.computeDistanceMeters(this.cameraGpsPosition.originCoords, dstCoords)
+		position.z *= this.data.latitude > this.cameraGpsPosition.originCoords.latitude	? -1 : 1
 		
 		// update element's position
 		this.el.setAttribute('position', position)
@@ -354,18 +344,41 @@ AFRAME.registerComponent('gps-place', {
 AFRAME.registerComponent('gps-debug', {
 	init : function(){
 		var camera = this.el;
+		
+		//////////////////////////////////////////////////////////////////////////////
+		//		Create html
+		//////////////////////////////////////////////////////////////////////////////
+		var domElement = document.createElement('div')
+		domElement.innerHTML = `
+		<!-- TODO build that directly in the javascript -->
+		<div style="position: fixed; top: 10px; width:100%; text-align: center; z-index: 1; text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;">
+			<div>
+				current coords: <span id="current_coords_longitude"></span>, <span id="current_coords_latitude"></span>
+				(origin coords: <span id="origin_coords_longitude"></span>, <span id="origin_coords_latitude"></span>)
+			</div>
+			<div>
+				camera coords: <span id="camera_p_x"></span>, <span id="camera_p_z"></span>
+			</div>
+			<div>
+				compass heading: <span id="compass_heading"></span>,
+				camera angle: <span id="camera_angle"></span>,
+				yaw angle: <span id="yaw_angle"></span>
+			</div>
+		</div>
+		`
+		document.body.appendChild(domElement.children[0])
 
 		// TODO cleanup this code
 		// TODO build the html element in there
 
-		camera.addEventListener('componentchanged', function (evt) {
-			switch(evt.detail.name){
+		camera.addEventListener('componentchanged', function (event) {
+			switch(event.detail.name){
 				case 'rotation':
-					//console.log('camera rotation changed', evt.detail.newData);
+					//console.log('camera rotation changed', event.detail.newData);
 					var compassRotation = camera.components['compass-rotation']
 					var lookControls = camera.components['look-controls']
 
-					camera_angle.innerText = evt.detail.newData.y;
+					camera_angle.innerText = event.detail.newData.y;
 
 					if( lookControls ){
 						yaw_angle.innerText = THREE.Math.radToDeg(lookControls.yawObject.rotation.y);
@@ -375,19 +388,19 @@ AFRAME.registerComponent('gps-debug', {
 					}
 					break;
 				case 'position':
-					//console.log('camera position changed', evt.detail.newData);
-					camera_p_x.innerText = evt.detail.newData.x;
-					camera_p_z.innerText = evt.detail.newData.z;
+					//console.log('camera position changed', event.detail.newData);
+					camera_p_x.innerText = event.detail.newData.x;
+					camera_p_z.innerText = event.detail.newData.z;
 
 					var gpsPosition = camera.components['gps-position'];
 					if( gpsPosition ){
-						if(gpsPosition.crd){
-							crd_longitude.innerText = gpsPosition.crd.longitude;
-							crd_latitude.innerText = gpsPosition.crd.latitude;
+						if(gpsPosition.currentCoords){
+							current_coords_longitude.innerText = gpsPosition.currentCoords.longitude;
+							current_coords_latitude.innerText = gpsPosition.currentCoords.latitude;
 						}
-						if(gpsPosition.zeroCrd){
-							zero_crd_longitude.innerText = gpsPosition.zeroCrd.longitude;
-							zero_crd_latitude.innerText = gpsPosition.zeroCrd.latitude;
+						if(gpsPosition.originCoords){
+							origin_coords_longitude.innerText = gpsPosition.originCoords.longitude;
+							origin_coords_latitude.innerText = gpsPosition.originCoords.latitude;
 						}
 					}
 					
