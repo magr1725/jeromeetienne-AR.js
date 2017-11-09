@@ -30,35 +30,39 @@ AFRAME.registerComponent('gps-position', {
 			this.originCoords = {latitude: this.data['origin-coords-latitude'], longitude: this.data['origin-coords-longitude']}
 		}
 		
-		this._watchPositionId = this.watchGPS(function(position){
+		this._watchPositionId = this._initWatchGPS(function(position){
 			// https://developer.mozilla.org/en-US/docs/Web/API/Coordinates
 			this.currentCoords = position.coords
-			this.updatePosition()
+			this._updatePosition()
 		}.bind(this))
 		
 	},
+	remove: function() {
+		if(this._watchPositionId) navigator.geolocation.clearWatch(this._watchPositionId)
+		this._watchPositionId = null
+	},
 	
-	watchGPS: function (success, error) {
+	_initWatchGPS: function( onSuccess, onError ){
 		// TODO put that in .init directly
 
-		if( error === undefined ){
-			error = function(err) { console.warn('ERROR('+err.code+'): '+err.message) }			
+		if( onError === undefined ){
+			onError = function(err) { console.warn('ERROR('+err.code+'): '+err.message) }			
 		}
-		
+
 		if( "geolocation" in navigator === false ){
-			error({code: 0, message: 'Geolocation is not supported by your browser'})
+			onError({code: 0, message: 'Geolocation is not supported by your browser'})
 			return
 		}
-		
+
 		// https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/watchPosition
-		return navigator.geolocation.watchPosition(success, error, {
+		return navigator.geolocation.watchPosition(onSuccess, onError, {
 			enableHighAccuracy: true,
 			maximumAge: 0,
 			timeout: 27000
 		})
 	},
-	
-	updatePosition: function () {
+
+	_updatePosition: function () {
 		// dont update if accuracy isnt good enough
 		if( this.currentCoords.accuracy > this.data.accuracy )	return
 		
@@ -99,10 +103,6 @@ AFRAME.registerComponent('gps-position', {
 		return angle * 6378160
 	},
 	
-	remove: function() {
-		if(this._watchPositionId) navigator.geolocation.clearWatch(this._watchPositionId)
-		this._watchPositionId = null
-	}
 	
 })
 
@@ -163,11 +163,11 @@ AFRAME.registerComponent('compass-rotation', {
 		if(this.heading === null || this.lastTimestamp > (time - this.data.fixTime)) return
 		
 		this.lastTimestamp = time
-		this.updateRotation()
+		this._updateRotation()
 		
 	},
 	
-	computeCompassHeading: function (alpha, beta, gamma) {
+	_computeCompassHeading: function (alpha, beta, gamma) {
 		
 		// Convert degrees to radians
 		var alphaRad = alpha * (Math.PI / 180)
@@ -219,7 +219,7 @@ AFRAME.registerComponent('compass-rotation', {
 			
 		}else if( event.alpha !== null ){
 			if(event.absolute === true || event.absolute === undefined ) {
-				heading = this.computeCompassHeading(event.alpha, event.beta, event.gamma)
+				heading = this._computeCompassHeading(event.alpha, event.beta, event.gamma)
 			}else{
 				console.warn('event.absolute === false')
 			}
@@ -230,7 +230,7 @@ AFRAME.registerComponent('compass-rotation', {
 		this.heading = heading	
 	},
 	
-	updateRotation: function() {
+	_updateRotation: function() {
 		
 		/*
 		camera.components["look-controls"].yawObject.rotation.y = THREE.Math.degToRad(
@@ -265,77 +265,6 @@ AFRAME.registerComponent('compass-rotation', {
 	
 })
 
-//////////////////////////////////////////////////////////////////////////////
-//		Component gps-place
-//////////////////////////////////////////////////////////////////////////////
-
-AFRAME.registerComponent('gps-place', {
-	
-	cameraGpsPosition: null,
-	_deferredInitInterval: 0,
-	
-	schema: {
-		latitude: {
-			type: 'number',
-			default: 0
-		},
-		longitude: {
-			type: 'number',
-			default: 0
-		},
-		cameraSelector: {	// TODO do i need this ?
-			type: 'string',
-			default: 'a-camera, [camera]'
-		}
-	},
-	
-	init: function () {
-		if(this._deferredInit()) return
-		this._deferredInitInterval = setInterval(this._deferredInit.bind(this), 100)
-	},
-	
-	_deferredInit: function () {
-		
-		if(!this.cameraGpsPosition){
-			var camera = document.querySelector(this.data.cameraSelector)
-			if(typeof(camera.components['gps-position']) == 'undefined') return
-			this.cameraGpsPosition = camera.components['gps-position']
-		}
-		
-		if(!this.cameraGpsPosition.originCoords) return
-		
-		this.updatePosition()
-		
-		clearInterval(this._deferredInitInterval)
-		this._deferredInitInterval = 0
-		
-		return true
-	},
-	
-	updatePosition: function() {
-		
-		var position = {x: 0, y: 0, z: 0}
-		
-		// update position.x
-		var dstCoords = {
-			longitude: this.data.longitude,
-			latitude: this.cameraGpsPosition.originCoords.latitude
-		}
-		position.x = this.cameraGpsPosition.computeDistanceMeters( this.cameraGpsPosition.originCoords, dstCoords )
-		position.x *= this.data.longitude > this.cameraGpsPosition.originCoords.longitude ? 1 : -1
-		
-		// update position.z
-		var dstCoords = {
-			longitude: this.cameraGpsPosition.originCoords.longitude,
-			latitude: this.data.latitude
-		}
-		position.z = this.cameraGpsPosition.computeDistanceMeters(this.cameraGpsPosition.originCoords, dstCoords)
-		position.z *= this.data.latitude > this.cameraGpsPosition.originCoords.latitude	? -1 : 1
-		
-		// update element's position
-		this.el.setAttribute('position', position)
-	}
-})
 
 //////////////////////////////////////////////////////////////////////////////
 //		Component gps-debug
@@ -408,5 +337,78 @@ AFRAME.registerComponent('gps-debug', {
 			}
 		});
 		
+	}
+})
+
+
+//////////////////////////////////////////////////////////////////////////////
+//		Component gps-place
+//////////////////////////////////////////////////////////////////////////////
+
+AFRAME.registerComponent('gps-place', {
+	
+	_cameraGpsPosition: null,
+	_deferredInitInterval: 0,
+	
+	schema: {
+		latitude: {
+			type: 'number',
+			default: 0
+		},
+		longitude: {
+			type: 'number',
+			default: 0
+		},
+		cameraSelector: {	// TODO do i need this ?
+			type: 'string',
+			default: 'a-camera, [camera]'
+		}
+	},
+	
+	init: function () {
+		if( this._deferredInit() ) return
+		this._deferredInitInterval = setInterval(this._deferredInit.bind(this), 100)
+	},
+	
+	_deferredInit: function () {
+		
+		if( this._cameraGpsPosition === null ){
+			var camera = document.querySelector(this.data.cameraSelector)
+			if(typeof(camera.components['gps-position']) == 'undefined') return
+			this._cameraGpsPosition = camera.components['gps-position']
+		}
+		
+		if( this._cameraGpsPosition.originCoords === null ) return
+		
+		this._updatePosition()
+		
+		clearInterval(this._deferredInitInterval)
+		this._deferredInitInterval = 0
+		
+		return true
+	},
+	
+	_updatePosition: function() {
+		
+		var position = {x: 0, y: 0, z: 0}
+		
+		// update position.x
+		var dstCoords = {
+			longitude: this.data.longitude,
+			latitude: this._cameraGpsPosition.originCoords.latitude
+		}
+		position.x = this._cameraGpsPosition.computeDistanceMeters( this._cameraGpsPosition.originCoords, dstCoords )
+		position.x *= this.data.longitude > this._cameraGpsPosition.originCoords.longitude ? 1 : -1
+		
+		// update position.z
+		var dstCoords = {
+			longitude: this._cameraGpsPosition.originCoords.longitude,
+			latitude: this.data.latitude
+		}
+		position.z = this._cameraGpsPosition.computeDistanceMeters(this._cameraGpsPosition.originCoords, dstCoords)
+		position.z *= this.data.latitude > this._cameraGpsPosition.originCoords.latitude	? -1 : 1
+		
+		// update element's position
+		this.el.setAttribute('position', position)
 	}
 })

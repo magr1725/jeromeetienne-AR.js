@@ -1,9 +1,12 @@
 <script src="https://aframe.io/releases/0.6.1/aframe.min.js"></script>
 <!-- include ar.js for aframe -->
-<script src='../../build/aframe-ar.js'></script>
-<script>ARjs.Context.baseURL = '../../../three.js/'</script>
+<script src='../../../build/aframe-ar.js'></script>
+<script>ARjs.Context.baseURL = '../../../../three.js/'</script>
 <!-- include gps-ar.js -->
-<script src="src/gps-ar.js"></script>
+<script src="../src/gps-debug.js"></script>
+<script src="../src/gps-location.js"></script>
+<script src="../src/device-position.js"></script>
+<script src="../src/device-orientation.js"></script>
 
 <body style='margin: 0px; overflow: hidden;'>
 	<a-scene embedded arjs='sourceType: webcam;'>
@@ -11,8 +14,8 @@
 		<a-sphere gps-place="longitude: 37.469820; latitude: 55.153653"></a-sphere> -->
 		<!-- <a-sphere gps-place="longitude:-6.2343797; latitude: 53.3431803" radius=2 color=red></a-sphere> -->
 
-		<a-sphere gps-place="latitude: 53.3426624; longitude: -6.238680400000021;"  radius=2 color=red></a-sphere>
-		<a-sphere gps-place="latitude: 51.509192; longitude: -0.114623;"  radius=2 color=green></a-sphere>
+		<a-sphere gps-location="latitude: 53.3426624; longitude: -6.238680400000021;"  radius=2 color=red></a-sphere>
+		<a-sphere gps-location="latitude: 51.509192; longitude: -0.114623;"  radius=2 color=green></a-sphere>
 		
 		<a-camera id="camera" user-height="1.6" gps-position compass-rotation gps-debug></a-camera>
 	</a-scene>

@@ -1,18 +1,22 @@
+- a lot of components options are uselessly complex
+
 - camera initialisation isnt compatible with marker projection matrix
   - see how to make it so
 
 - make a good example
-  - how to handle the specific of the user latitude/longiture
+  - how to handle the specific of the user latitude/longitude
 
-- handle altitude if possible
 
 - display stuff independantly of the Z
   - thus the tracking seems less bad
 
 - make components name more uniforms - more ar.js like
-
-- clean up the code
-- remove abreviation
+  - gps-place - for an object in real world
+  - gps-debug - for camera - to display debug
+  - compass-rotation - for camera - to set the compass of the camera
+  - gps-position - for camera - to set the position from the gps
+  - put arjs-gps-* instead of gps-
+  - new name => arjs-gps-location and arjs-gps-camera
 
 - improve object location to be searched by google maps or similar
   - thus no need to push unreadable coordinates
