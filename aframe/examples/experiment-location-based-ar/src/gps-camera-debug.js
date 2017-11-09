@@ -1,6 +1,6 @@
-AFRAME.registerComponent('gps-debug', {
+AFRAME.registerComponent('gps-camera-debug', {
 	init : function(){
-		var camera = this.el;
+		var camera = this.el
 		
 		//////////////////////////////////////////////////////////////////////////////
 		//		Create html
@@ -35,35 +35,35 @@ AFRAME.registerComponent('gps-debug', {
 					var compassRotation = camera.components['compass-rotation']
 					var lookControls = camera.components['look-controls']
 
-					camera_angle.innerText = event.detail.newData.y;
+					camera_angle.innerText = event.detail.newData.y.toFixed(2)
 
 					if( lookControls ){
-						yaw_angle.innerText = THREE.Math.radToDeg(lookControls.yawObject.rotation.y);
+						yaw_angle.innerText = THREE.Math.radToDeg(lookControls.yawObject.rotation.y).toFixed(2)
 					}
-					if( compassRotation ){
-						compass_heading.innerText = compassRotation.heading;
+					if( compassRotation && compassRotation.heading !== null ){
+						compass_heading.innerText = compassRotation.heading.toFixed(2)
 					}
-					break;
+					break
 				case 'position':
-					//console.log('camera position changed', event.detail.newData);
-					camera_p_x.innerText = event.detail.newData.x;
-					camera_p_z.innerText = event.detail.newData.z;
+					//console.log('camera position changed', event.detail.newData)
+					camera_p_x.innerText = event.detail.newData.x
+					camera_p_z.innerText = event.detail.newData.z
 
-					var gpsPosition = camera.components['gps-position'];
+					var gpsPosition = camera.components['gps-position']
 					if( gpsPosition ){
 						if(gpsPosition.currentCoords){
-							current_coords_longitude.innerText = gpsPosition.currentCoords.longitude;
-							current_coords_latitude.innerText = gpsPosition.currentCoords.latitude;
+							current_coords_longitude.innerText = gpsPosition.currentCoords.longitude
+							current_coords_latitude.innerText = gpsPosition.currentCoords.latitude
 						}
 						if(gpsPosition.originCoords){
-							origin_coords_longitude.innerText = gpsPosition.originCoords.longitude;
-							origin_coords_latitude.innerText = gpsPosition.originCoords.latitude;
+							origin_coords_longitude.innerText = gpsPosition.originCoords.longitude
+							origin_coords_latitude.innerText = gpsPosition.originCoords.latitude
 						}
 					}
 					
-					break;
+					break
 			}
-		});
+		})
 		
 	}
 })

@@ -1,13 +1,9 @@
-AFRAME.registerComponent('gps-place', {
+AFRAME.registerComponent('gps-entity-place', {
 	
 	_cameraGpsPosition: null,
 	_deferredInitInterval: 0,
 	
 	schema: {
-		location: {
-			type: 'string',
-			default: 'a-camera, [camera]'
-		}
 		latitude: {
 			type: 'number',
 			default: 0
@@ -38,11 +34,12 @@ AFRAME.registerComponent('gps-place', {
 		}
 		
 		if( this._cameraGpsPosition.originCoords === null ) return
+	
+		clearInterval(this._deferredInitInterval)
+		this._deferredInitInterval = 0		
 		
 		this._updatePosition()
-		
-		clearInterval(this._deferredInitInterval)
-		this._deferredInitInterval = 0
+
 		
 		return true
 	},
@@ -67,7 +64,7 @@ AFRAME.registerComponent('gps-place', {
 		position.z = this._cameraGpsPosition.computeDistanceMeters(this._cameraGpsPosition.originCoords, dstCoords)
 		position.z *= this.data.latitude > this._cameraGpsPosition.originCoords.latitude	? -1 : 1
 		
-		// update element's position
+		// update element's position in 3d world
 		this.el.setAttribute('position', position)
 	}
 })

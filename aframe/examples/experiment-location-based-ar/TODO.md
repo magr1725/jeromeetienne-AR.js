@@ -1,3 +1,4 @@
+- gps-place: only one parameters. location
 - a lot of components options are uselessly complex
 
 - camera initialisation isnt compatible with marker projection matrix

@@ -1,19 +1,14 @@
 AFRAME.registerComponent('compass-rotation', {
 	
 	lookControls: null,
-	lastTimestamp: 0,
 	heading: null,
 	
 	
 	schema: {
 		maxTime: {
 			type: 'int',
-			default: 2000
+			default: 0
 		},
-		orientationEvent: {	// TODO do i need this ?
-			type: 'string',
-			default: 'auto'
-		}
 	},
 	
 	init: function () {
@@ -22,21 +17,10 @@ AFRAME.registerComponent('compass-rotation', {
 		
 		this.lookControls = this.el.components['look-controls']
 		
-		this.handlerOrientation = this.handlerOrientation.bind(this)
+		this.onDeviceOrientation = this.onDeviceOrientation.bind(this)
 		
-		if( this.data.orientationEvent === 'auto' ){
-			if('ondeviceorientationabsolute' in window){
-				this.data.orientationEvent = 'deviceorientationabsolute'
-			}else if('ondeviceorientation' in window){
-				this.data.orientationEvent = 'deviceorientation'
-			}else{
-				this.data.orientationEvent = ''
-				alert('Compass not supported')
-				return
-			}
-		}
-		
-		window.addEventListener( this.data.orientationEvent, this.handlerOrientation, false)
+		var eventName = this._getDeviceOrientationEventName()
+		window.addEventListener( eventName, this.onDeviceOrientation, false)
 		
 		window.addEventListener('compassneedscalibration', function(event) {
 			alert('Your compass needs calibrating! Wave your device in a figure-eight motion')
@@ -47,11 +31,26 @@ AFRAME.registerComponent('compass-rotation', {
 	
 	tick: function( time, timeDelta ){
 		
-		if(this.heading === null || this.lastTimestamp > (time - this.data.maxTime)) return
+		if(this.heading === null ) return
 		
-		this.lastTimestamp = time
 		this._updateRotation()
 		
+	},
+	
+	remove: function () {
+		var eventName = this._getDeviceOrientationEventName()
+		window.removeEventListener(eventName, this.onDeviceOrientation, false)
+	},
+	_getDeviceOrientationEventName: function(){
+		if('ondeviceorientationabsolute' in window){
+			var eventName = 'deviceorientationabsolute'
+		}else if('ondeviceorientation' in window){
+			var eventName = 'deviceorientation'
+		}else{
+			var eventName = ''
+			console.error('Compass not supported')
+		}		
+		return eventName
 	},
 	
 	_computeCompassHeading: function (alpha, beta, gamma) {
@@ -90,20 +89,17 @@ AFRAME.registerComponent('compass-rotation', {
 		return compassHeading
 	},
 	
-	handlerOrientation: function( event ){
+	onDeviceOrientation: function( event ){
 		
 		var heading = null
 		
-		//console.log('device orientation event', event)
-		
+		// compute heading
 		if( event.webkitCompassHeading  !== undefined ){
-			
 			if(event.webkitCompassAccuracy < 50){
 				heading = event.webkitCompassHeading
 			}else{
 				console.warn('webkitCompassAccuracy is event.webkitCompassAccuracy')
-			}
-			
+			}			
 		}else if( event.alpha !== null ){
 			if(event.absolute === true || event.absolute === undefined ) {
 				heading = this._computeCompassHeading(event.alpha, event.beta, event.gamma)
@@ -114,40 +110,20 @@ AFRAME.registerComponent('compass-rotation', {
 			console.warn('event.alpha === null')
 		}
 		
+		// update heading
 		this.heading = heading	
 	},
 	
 	_updateRotation: function() {
-		
-		/*
-		camera.components["look-controls"].yawObject.rotation.y = THREE.Math.degToRad(
-			(
-				360
-				- camera.components["compass-rotation"].heading
-				- (
-					camera.getAttribute('rotation').y
-					- THREE.Math.radToDeg(camera.components["look-controls"].yawObject.rotation.y)
-				)
-			)
-			% 360
-		)
-		*/
-		
-		
+
 		var heading = 360 - this.heading
-		var camera_rotation = this.el.getAttribute('rotation').y
-		var yaw_rotation = THREE.Math.radToDeg(this.lookControls.yawObject.rotation.y)
+		var cameraRotation = this.el.getAttribute('rotation').y
+		var yawRotation = THREE.Math.radToDeg(this.lookControls.yawObject.rotation.y)
 		
-		var offset = ( heading - ( camera_rotation - yaw_rotation ) ) % 360
+		var offset = ( heading - ( cameraRotation - yawRotation ) ) % 360
 		
 		this.lookControls.yawObject.rotation.y = THREE.Math.degToRad(offset)
 		
 	},
-	
-	remove: function () {
-		if(this.data.orientationEvent){			
-			window.removeEventListener(this.data.orientationEvent, this.handlerOrientation, false)
-		}
-	}
 	
 })
