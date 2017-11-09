@@ -1,14 +1,10 @@
-AFRAME.registerComponent('compass-rotation', {
+AFRAME.registerComponent('gps-camera-rotation', {
 	
 	lookControls: null,
 	heading: null,
 	
 	
 	schema: {
-		maxTime: {
-			type: 'int',
-			default: 0
-		},
 	},
 	
 	init: function () {
@@ -17,10 +13,10 @@ AFRAME.registerComponent('compass-rotation', {
 		
 		this.lookControls = this.el.components['look-controls']
 		
-		this.onDeviceOrientation = this.onDeviceOrientation.bind(this)
-		
+		// listen to deviceorientation event
 		var eventName = this._getDeviceOrientationEventName()
-		window.addEventListener( eventName, this.onDeviceOrientation, false)
+		this._$onDeviceOrientation = this._onDeviceOrientation.bind(this)
+		window.addEventListener( eventName, this._$onDeviceOrientation, false)
 		
 		window.addEventListener('compassneedscalibration', function(event) {
 			alert('Your compass needs calibrating! Wave your device in a figure-eight motion')
@@ -31,7 +27,7 @@ AFRAME.registerComponent('compass-rotation', {
 	
 	tick: function( time, timeDelta ){
 		
-		if(this.heading === null ) return
+		if( this.heading === null ) return
 		
 		this._updateRotation()
 		
@@ -39,8 +35,9 @@ AFRAME.registerComponent('compass-rotation', {
 	
 	remove: function () {
 		var eventName = this._getDeviceOrientationEventName()
-		window.removeEventListener(eventName, this.onDeviceOrientation, false)
+		window.removeEventListener(eventName, this._$onDeviceOrientation, false)
 	},
+
 	_getDeviceOrientationEventName: function(){
 		if('ondeviceorientationabsolute' in window){
 			var eventName = 'deviceorientationabsolute'
@@ -89,29 +86,24 @@ AFRAME.registerComponent('compass-rotation', {
 		return compassHeading
 	},
 	
-	onDeviceOrientation: function( event ){
-		
-		var heading = null
+	_onDeviceOrientation: function( event ){
 		
 		// compute heading
 		if( event.webkitCompassHeading  !== undefined ){
 			if(event.webkitCompassAccuracy < 50){
-				heading = event.webkitCompassHeading
+				this.heading = event.webkitCompassHeading
 			}else{
 				console.warn('webkitCompassAccuracy is event.webkitCompassAccuracy')
 			}			
 		}else if( event.alpha !== null ){
 			if(event.absolute === true || event.absolute === undefined ) {
-				heading = this._computeCompassHeading(event.alpha, event.beta, event.gamma)
+				this.heading = this._computeCompassHeading(event.alpha, event.beta, event.gamma)
 			}else{
 				console.warn('event.absolute === false')
 			}
 		}else{
 			console.warn('event.alpha === null')
 		}
-		
-		// update heading
-		this.heading = heading	
 	},
 	
 	_updateRotation: function() {

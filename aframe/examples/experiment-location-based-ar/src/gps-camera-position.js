@@ -1,4 +1,4 @@
-AFRAME.registerComponent('gps-position', {
+AFRAME.registerComponent('gps-camera-position', {
 	
 	_watchPositionId: null,
 
@@ -6,25 +6,13 @@ AFRAME.registerComponent('gps-position', {
 	currentCoords: null,
 	
 	schema: {
-		accuracy: {
+		minAccuracy: {
 			type: 'int',
 			default: 100
 		},
-		'origin-coords-latitude': {	// TODO do i need this ?
-			type: 'number',
-			default: NaN
-		},
-		'origin-coords-longitude': {	// TODO do i need this ?
-			type: 'number',
-			default: NaN
-		}
 	},
 	
 	init: function () {
-		
-		if( !isNaN(this.data['origin-coords-latitude']) && !isNaN(this.data['origin-coords-longitude']) ){
-			this.originCoords = {latitude: this.data['origin-coords-latitude'], longitude: this.data['origin-coords-longitude']}
-		}
 		
 		this._watchPositionId = this._initWatchGPS(function(position){
 			// https://developer.mozilla.org/en-US/docs/Web/API/Coordinates
@@ -60,7 +48,7 @@ AFRAME.registerComponent('gps-position', {
 
 	_updatePosition: function () {
 		// dont update if accuracy isnt good enough
-		if( this.currentCoords.accuracy > this.data.accuracy )	return
+		if( this.currentCoords.accuracy > this.data.minAccuracy )	return
 		
 		// init originCoords if needed
 		if( this.originCoords === null ) this.originCoords = this.currentCoords

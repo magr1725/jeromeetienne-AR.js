@@ -12,10 +12,6 @@ AFRAME.registerComponent('gps-entity-place', {
 			type: 'number',
 			default: 0
 		},
-		cameraSelector: {	// TODO do i need this ?
-			type: 'string',
-			default: 'a-camera, [camera]'
-		}
 	},
 	
 	init: function () {
@@ -28,11 +24,12 @@ AFRAME.registerComponent('gps-entity-place', {
 	_deferredInit: function () {
 		
 		if( this._cameraGpsPosition === null ){
-			var camera = document.querySelector(this.data.cameraSelector)
-			if(typeof(camera.components['gps-position']) == 'undefined') return
-			this._cameraGpsPosition = camera.components['gps-position']
+			var camera = document.querySelector('a-camera, [camera]')
+			if( camera.components['gps-camera-position'] === undefined)	return
+			this._cameraGpsPosition = camera.components['gps-camera-position']
 		}
 		
+		console.log(this._cameraGpsPosition.originCoords)
 		if( this._cameraGpsPosition.originCoords === null ) return
 	
 		clearInterval(this._deferredInitInterval)
@@ -62,7 +59,7 @@ AFRAME.registerComponent('gps-entity-place', {
 			latitude: this.data.latitude
 		}
 		position.z = this._cameraGpsPosition.computeDistanceMeters(this._cameraGpsPosition.originCoords, dstCoords)
-		position.z *= this.data.latitude > this._cameraGpsPosition.originCoords.latitude	? -1 : 1
+		position.z *= this.data.latitude > this._cameraGpsPosition.originCoords.latitude ? -1 : 1
 		
 		// update element's position in 3d world
 		this.el.setAttribute('position', position)
